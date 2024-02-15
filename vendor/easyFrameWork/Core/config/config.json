@@ -1,0 +1,5 @@
+{
+    "racine":{
+        "controller":"vendor\\easyFrameWork\\Core\\Master\\Controller\\"
+    }
+}
