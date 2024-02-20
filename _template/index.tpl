@@ -4,3 +4,4 @@
 <li>{#value#}</li>
 {/LOOP}
 </ul>
+{:SESSION name="test" context="public"}

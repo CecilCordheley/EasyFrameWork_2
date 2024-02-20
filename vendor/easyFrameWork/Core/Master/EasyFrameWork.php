@@ -6,14 +6,15 @@ use vendor\easyFrameWork\Core\Master\EasyTemplate;
 use vendor\easyFrameWork\Core\Master\Router;
 use vendor\easyFrameWork\Core\Master\Controller;
 use vendor\easyFrameWork\Core\Master\Autoloader;
-
 abstract class EasyFrameWork
 {
     public static $Racines = [];
     public static function INIT()
     {
-        // echo "INIT FRAMEWORK---";
+        session_start();
+         echo "<!--INIT EasyFrameWork-->";
         require_once("Autoloader.php");
+        Autoloader::register();
         self::$Racines = json_decode(file_get_contents("vendor/easyFrameWork/Core/config/config.json"), true)["racine"];
         //   EasyFrameWork::Debug(self::$Racines);
     }

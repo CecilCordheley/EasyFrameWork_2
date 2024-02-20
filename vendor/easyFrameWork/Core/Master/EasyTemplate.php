@@ -121,6 +121,7 @@ class EasyTemplate
             foreach ($_SESSION as $context => $values) {
                 foreach ($values as $name => $value) {
                     $this->content = str_replace("{:SESSION context=\"$context\" name=\"$name\"}", htmlspecialchars($value), $this->content);
+                    $this->content = str_replace("{:SESSION name=\"$name\" context=\"$context\"}", htmlspecialchars($value), $this->content);
                 }
             }
         }
