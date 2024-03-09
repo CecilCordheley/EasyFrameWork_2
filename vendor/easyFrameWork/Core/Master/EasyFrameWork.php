@@ -39,12 +39,73 @@ abstract class EasyFrameWork
         }
     }
 }
-class FileParser
+/**
+ * Permet de générer un fil d'ariane intégrable sur le projet et conforme au microformat de google
+ */
+class BreadCrumb
 {
+    private $items = [];
+
+    /**
+     * Ajoute un élément au fil d'Ariane s'il s'agit du dernier ne pas spécifié de lien
+     */
+    public function updateBreadCrumb(string $label,string $href = "")
+    {
+        $this->items[] = ["label" => $label, "href" => $href];
+    }
+    /**
+     * Retourne la chaîne HTML du file d'ariane
+     */
+    public function displayBreadCrumb()
+    {
+        $count = count($this->items);
+
+        if ($count === 0) {
+            return "";
+        }
+
+        $breadDisplay = "<ol itemscope itemtype=\"https://schema.org/BreadcrumbList\">\n";
+
+        for ($i = 0; $i < $count - 1; $i++) {
+            $breadDisplay .= $this->generateListItem($i);
+        }
+
+        $breadDisplay .= $this->generateListItem($count - 1, true);
+        $breadDisplay .= "</ol>";
+
+        return $breadDisplay;
+    }
+
+    private function generateListItem($index, $isLast = false)
+    {
+        $item = $this->items[$index];
+        $position = $index + 1;
+
+        $listItem = "<li itemprop=\"itemListElement\" itemscope itemtype=\"https://schema.org/ListItem\" position=\"$position\">\n";
+        $listItem .= "<a itemscope itemtype=\"https://schema.org/WebPage\" itemprop=\"item\"";
+
+        if (!empty($item["href"])) {
+            $listItem .= " itemid=\"{$item["href"]}\" href=\"{$item["href"]}\"";
+        }
+
+        $listItem .= ">\n<span itemprop=\"name\">{$item["label"]}</span></a>\n";
+        $listItem .= "<meta itemprop=\"position\" content=\"$position\"/>\n";
+
+        if ($isLast) {
+            $listItem .= "</li>\n";
+        } else {
+            $listItem .= "</li>\n";
+        }
+
+        return $listItem;
+    }
 }
 class Debug
 {
 }
+/**
+ * Fourni les méthodes spécifique pour l'encodage
+ */
 class Cryptographer
 {
     public const HASH_ALGO = [
