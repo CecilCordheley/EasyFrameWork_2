@@ -16,7 +16,7 @@ use vendor\easyFrameWork\Core\Master\EasyTemplate;
             // Définir les variables à utiliser dans le template
             $template->setVariables($this->getData());
             $data=[];
-            $template->remplaceTemplate("content","%access_css%%");
+            $template->remplaceTemplate("content","%access_template%%");
             // Rendre le template
             $template->render();
             
