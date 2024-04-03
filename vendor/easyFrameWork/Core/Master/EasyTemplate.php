@@ -14,7 +14,7 @@ class EasyTemplate
 
     public function __construct(array $config, ResourceManager $resourceManager)
     {
-        echo "<!--Initilize Template-->\n";
+        echo "<!--Initilize Template-->";
         $this->config = $config;
         $this->resourceManager = $resourceManager;
         $this->loadContent();
@@ -24,9 +24,9 @@ class EasyTemplate
     {
         if (file_exists($this->config['templateDirectory'] . '/' . $this->config['masterPage'])) {
             $this->content = file_get_contents($this->config['templateDirectory'] . '/' . $this->config['masterPage']);
-            echo "<!--Master Template Loaded-->\n";
+            echo "<!--Master Template Loaded-->";
         } else
-            echo "<!--Error Master Template Can't be Load-->\n";
+            echo "<!--Error Master Template Can't be Load-->";
     }
     public function changeMaster($newMaster)
     {
@@ -43,7 +43,7 @@ class EasyTemplate
     }
     public function render(array $customReplacements = [])
     {
-        echo "<!--Render Template-->\n";
+        echo "<!--Render Template-->";
         $this->renderStylesheets();
         $this->renderScripts();
         $this->renderMicroData();
@@ -154,7 +154,7 @@ class EasyTemplate
         foreach ($this->variables as $key => $value) {
 
             $arr = gettype($value);
-            if ($arr == "string")
+            if ($arr != "array")
                 $this->content = str_replace("{var:$key}", html_entity_decode($value), $this->content);
             else {
                 foreach ($value as $sKey => $sValue) {

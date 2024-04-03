@@ -3,7 +3,7 @@ namespace vendor\easyFrameWork\Core\Master;
 abstract class Controller {
    private array $data;
    public function __construct(){
-       $this->data=[];
+    $this->data=[];
    }
    abstract public function handleRequest();
    public function setData($key,$value){

@@ -6,17 +6,32 @@ use vendor\easyFrameWork\Core\Master\EasyTemplate;
 use vendor\easyFrameWork\Core\Master\Router;
 use vendor\easyFrameWork\Core\Master\Controller;
 use vendor\easyFrameWork\Core\Master\Autoloader;
+
 abstract class EasyFrameWork
 {
     public static $Racines = [];
     public static function INIT()
     {
         session_start();
-         echo "<!--INIT EasyFrameWork-->";
+     //   echo "<!--INIT EasyFrameWork-->";
         require_once("Autoloader.php");
         Autoloader::register();
         self::$Racines = json_decode(file_get_contents("vendor/easyFrameWork/Core/config/config.json"), true)["racine"];
         //   EasyFrameWork::Debug(self::$Racines);
+    }
+    public static function array_keys_exists(array $keys, array $array): bool
+    {
+        $diff = array_diff_key(array_flip($keys), $array);
+        return count($diff) === 0;
+    }
+    /**
+     * Retourne la chaîne de caractères sous forme camelCase
+     */
+    public static function toCamelCase(string $str): string
+    {
+        return preg_replace_callback('/(?:^|_)([a-z])/', function ($matches) {
+            return strtoupper($matches[1]);
+        }, $str);
     }
     public static function Debug(mixed $var)
     {
@@ -26,12 +41,14 @@ abstract class EasyFrameWork
     private static $classes = [];
 
     // Méthode pour enregistrer une classe dans le tableau
-    public static function registerClass(string $className, $classInstance) {
+    public static function registerClass(string $className, $classInstance)
+    {
         self::$classes[$className] = $classInstance;
     }
 
     // Méthode pour obtenir une instance de classe à partir du nom de classe
-    public static function getClassInstance($className) {
+    public static function getClassInstance($className)
+    {
         if (isset(self::$classes[$className])) {
             return self::$classes[$className];
         } else {
@@ -39,23 +56,15 @@ abstract class EasyFrameWork
         }
     }
 }
-/**
- * Permet de générer un fil d'ariane intégrable sur le projet et conforme au microformat de google
- */
 class BreadCrumb
 {
     private $items = [];
 
-    /**
-     * Ajoute un élément au fil d'Ariane s'il s'agit du dernier ne pas spécifié de lien
-     */
-    public function updateBreadCrumb(string $label,string $href = "")
+    public function updateBreadCrumb($label, $href = "")
     {
         $this->items[] = ["label" => $label, "href" => $href];
     }
-    /**
-     * Retourne la chaîne HTML du file d'ariane
-     */
+
     public function displayBreadCrumb()
     {
         $count = count($this->items);
@@ -100,12 +109,10 @@ class BreadCrumb
         return $listItem;
     }
 }
+
 class Debug
 {
 }
-/**
- * Fourni les méthodes spécifique pour l'encodage
- */
 class Cryptographer
 {
     public const HASH_ALGO = [
