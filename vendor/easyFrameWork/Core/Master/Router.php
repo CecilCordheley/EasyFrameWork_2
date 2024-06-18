@@ -1,55 +1,43 @@
 <?php
-
 namespace vendor\easyFrameWork\Core\Master;
-
-class Router
-{
+class Router {
     private $routes = [];
-    private $data = [];
-    public function __construct($ctrlDirectory = "./_ctrl/")
-    {
-        foreach (scandir($ctrlDirectory) as $file) {
+    private $data=[];
 
-            if ($file != "." && $file != "..") {
-                require_once $ctrlDirectory . $file;
-                //  echo $ctrlDirectory.$file;
+    public function __construct($ctrlDirectory="./_ctrl/"){
+
+        foreach(scandir($ctrlDirectory) as $file){
+            
+            if($file!="." && $file!=".."){
+                require_once $ctrlDirectory.$file;
+              //  echo $ctrlDirectory.$file;
             }
         }
     }
-    public function addRoute($path, $callback)
-    {
-        $this->routes[$path] = EasyFrameWork::$Racines["controller"] . $callback;
-        //  var_dump($this->routes);
+    public function addRoute($path, $callback) {
+        $this->routes[$path] = EasyFrameWork::$Racines["controller"].$callback;
     }
-    public function setData($key, $value)
-    {
-        $this->data[$key] = $value;
+    public function setData($key,$value){
+        $this->data[$key]=$value;
     }
-    public function route($requestUri, $data = [])
-    {
-        $arr = explode("/", $requestUri);
-      //  var_dump($arr);
-        if (count($arr) > 1) {
-            $uri = end($arr);
-        } else {
-            $uri = str_replace("/","",$requestUri);
-        }
-       // echo $uri;
+    public function route($requestUri,$data=[],$env=null) {
+        $arr=explode("/",$requestUri);
+        $uri=end($arr);
+        
         foreach ($this->routes as $path => $controller) {
-            //   $classe=get_declared_classes();
-            // sort($classe);
-            //echo ("POP".$uri ."=". $path);
+            $classe=get_declared_classes();
+           // sort($classe);
+         //  EasyFrameWork::Debug($controller);
             if ($uri === $path) {
-             //   echo ($controller);
+                
                 // Vérifier si le contrôleur existe
                 if (class_exists($controller)) {
-                   // echo "classe exist";
+                
                     // Créer une instance du contrôleur et appeler handleRequest()
-                    $controllerInstance = new $controller();
-               //     var_dump($controllerInstance);
-                    if (!empty($data)) {
-                        foreach ($data as $key => $value)
-                            $controllerInstance->setData($key, $value);
+                    $controllerInstance = new $controller($env);
+                    if(!empty($data)){
+                        foreach($data as $key=>$value)
+                            $controllerInstance->setData($key,$value);
                     }
                     $controllerInstance->handleRequest();
                     return;
@@ -59,8 +47,7 @@ class Router
         $this->notFound();
     }
 
-    private function notFound()
-    {
+    private function notFound() {
         echo "Page non trouvée";
     }
 }

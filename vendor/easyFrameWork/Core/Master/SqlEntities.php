@@ -41,9 +41,12 @@ abstract class SqlEntities
         }
     }
     private static function getIdField($columns){
-        return array_filter($columns,function($el){
-            return $el["PRIMARY"]=="PRI";
-        })[0]["NAME"];
+      //  var_dump($columns);
+        $a=array_filter($columns,function($el){
+            return $el["PRIMARY"]==="PRI";
+        });
+       // var_dump(current($a));
+        return current($a)["NAME"];
     }
     /**
      * Génére la class SQLEntities

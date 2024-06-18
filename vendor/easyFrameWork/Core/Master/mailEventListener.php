@@ -16,8 +16,8 @@ interface ISubject {
  * avec les paramètres
  * @author Sébastien DAMART
  */
-class mailEventListener implements ISubject{
-    private $_observers;
+class mailEventListener implements ISubject {
+    private $_observers = array();
     /**
      * adresse mail de l'éméteur
      * @var string
@@ -43,16 +43,20 @@ class mailEventListener implements ISubject{
      * @var string 
      */
     private $to;
-    public function __construct($From,$subject="",$message=""){
-        $this->emeteur=$From;
-        $this->subject=$subject;
-        $this->message=$message;
-        $this->headers=array(
-            "From"=>$this->emeteur,
-            "Reply-To"=>"",
-            'X-Mailer'=>"PHP/" . phpversion()
+
+    public function __construct($From, $subject = "", $message = "") {
+        $this->emeteur = $From;
+        $this->subject = $subject;
+        $this->message = $message;
+        $this->headers = array(
+            "From" => $this->emeteur,
+            "Reply-To" => "",
+            "MIME-Version:" =>"1.0",
+            "X-Mailer" => "PHP/" . phpversion(),
+            "Content-type" => "text/html; charset=UTF-8"
         );
     }
+
     public function __get($name) {
         switch ($name) {
             case "From":
@@ -67,58 +71,79 @@ class mailEventListener implements ISubject{
                 break;
         }
     }
-    public function __set($name,$value){
-        switch ($name){
-             case "From":
-                $this->emeteur=$value;
+
+    public function __set($name, $value) {
+        switch ($name) {
+            case "From":
+                $this->emeteur = $value;
                 break;
             case "Subject":
-                $this->subject=$value;
+                $this->subject = $value;
                 break;
             case "Message":
-                $this->message=$value;
+                $this->message = $value;
                 break;
             case "To":
-                $this->to=$value;
+                $this->to = $value;
                 break;
             default:
                 break;
         }
     }
-    public function setHeader($param,$value){
-        $this->headers[$param]=$value;
+
+    public function setHeader($param, $value) {
+        $this->headers[$param] = $value;
     }
+
     public function attach($obs) {
-        $this->_observers[]=$obs;
+        $this->_observers[] = $obs;
     }
-    public function addEventListener($eventHandler){
+
+    public function addEventListener($eventHandler) {
         $this->attach($eventHandler);
     }
+
     public function detach($obs) {
         if (is_int($key = array_search($obs, $this->_observers, true))) {
             unset($this->_observers[$key]);
         }
     }
+
     public function notifyObs() {
         foreach ($this->_observers as $observer) {
-            try{
+            try {
                 $observer->update($this); // délégation
-            }catch(\Exception $e){
+            } catch (\Exception $e) {
                 die($e->getMessage());
             }
         }
     }
-    public function SendMail($to){
+
+    public function SendMail($to) {
         $subject = $this->subject;
         $message = $this->message;
-        $headers="";
+        $headers = "";
         foreach ($this->headers as $key => $value) {
-            $headers="$key:$value\n\t";
+            $headers .= "$key: $value\r\n";
         }
         mail($to, $subject, $message, $headers);
+          
+        // Debugging output
+        echo "To: $to<br>";
+        echo "Subject: $subject<br>";
+        echo "Message: $message<br>";
+        echo "Headers:<br>" . nl2br($headers) . "<br>";
+
+        if (mail($to, $subject, $message, $headers)) {
+            echo "Mail sent successfully.";
+        } else {
+            echo "Failed to send mail.";
+        }
+
         $this->notifyObs();
     }
 }
+
 
 abstract class MailEventListner implements IObserver{
     public function update($object) {

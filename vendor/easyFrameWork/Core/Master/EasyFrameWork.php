@@ -6,49 +6,40 @@ use vendor\easyFrameWork\Core\Master\EasyTemplate;
 use vendor\easyFrameWork\Core\Master\Router;
 use vendor\easyFrameWork\Core\Master\Controller;
 use vendor\easyFrameWork\Core\Master\Autoloader;
-
+use Exception;
 abstract class EasyFrameWork
 {
     public static $Racines = [];
     public static function INIT()
     {
         session_start();
-     //   echo "<!--INIT EasyFrameWork-->";
+     //    echo "<!--INIT EasyFrameWork-->";
         require_once("Autoloader.php");
         Autoloader::register();
+      //  EasyFrameWork::Debug($_SERVER);
         self::$Racines = json_decode(file_get_contents("vendor/easyFrameWork/Core/config/config.json"), true)["racine"];
         //   EasyFrameWork::Debug(self::$Racines);
-    }
-    public static function array_keys_exists(array $keys, array $array): bool
-    {
-        $diff = array_diff_key(array_flip($keys), $array);
-        return count($diff) === 0;
-    }
-    /**
-     * Retourne la chaîne de caractères sous forme camelCase
-     */
-    public static function toCamelCase(string $str): string
-    {
-        return preg_replace_callback('/(?:^|_)([a-z])/', function ($matches) {
-            return strtoupper($matches[1]);
-        }, $str);
     }
     public static function Debug(mixed $var)
     {
         var_dump($var);
         exit;
     }
+    public static function toCamelCase(string $input): string
+    {
+        return preg_replace_callback('/(?:^|_)([a-z])/', function ($matches) {
+            return strtoupper($matches[1]);
+        }, $input);
+    }
     private static $classes = [];
 
     // Méthode pour enregistrer une classe dans le tableau
-    public static function registerClass(string $className, $classInstance)
-    {
+    public static function registerClass(string $className, $classInstance) {
         self::$classes[$className] = $classInstance;
     }
 
     // Méthode pour obtenir une instance de classe à partir du nom de classe
-    public static function getClassInstance($className)
-    {
+    public static function getClassInstance($className) {
         if (isset(self::$classes[$className])) {
             return self::$classes[$className];
         } else {
@@ -56,60 +47,46 @@ abstract class EasyFrameWork
         }
     }
 }
-class BreadCrumb
-{
-    private $items = [];
+class EnvParser {
+    private $envData;
 
-    public function updateBreadCrumb($label, $href = "")
-    {
-        $this->items[] = ["label" => $label, "href" => $href];
+    public function __construct($envFilePath) {
+        if (!file_exists($envFilePath)) {
+            throw new Exception("Le fichier $envFilePath n\'existe pas.");
+        }
+
+        // Lire le contenu du fichier .env
+        $envContent = file_get_contents($envFilePath);
+
+        // Diviser le contenu en lignes
+        $lines = explode("\n", $envContent);
+
+        // Parcourir chaque ligne et extraire les variables
+        foreach ($lines as $line) {
+            // Ignorer les lignes vides et les commentaires
+            if (trim($line) !== '' && strpos(trim($line), '#') !== 0) {
+                // Diviser chaque ligne en clé et valeur
+                list($key, $value) = explode('=', $line, 2);
+
+                // Supprimer les espaces et les guillemets de la valeur
+                $value = trim($value);
+                $value = trim($value, "'\"");
+                
+                // Ajouter la paire clé-valeur au tableau
+                $this->envData[$key] = $value;
+            }
+        }
     }
 
-    public function displayBreadCrumb()
-    {
-        $count = count($this->items);
-
-        if ($count === 0) {
-            return "";
-        }
-
-        $breadDisplay = "<ol itemscope itemtype=\"https://schema.org/BreadcrumbList\">\n";
-
-        for ($i = 0; $i < $count - 1; $i++) {
-            $breadDisplay .= $this->generateListItem($i);
-        }
-
-        $breadDisplay .= $this->generateListItem($count - 1, true);
-        $breadDisplay .= "</ol>";
-
-        return $breadDisplay;
-    }
-
-    private function generateListItem($index, $isLast = false)
-    {
-        $item = $this->items[$index];
-        $position = $index + 1;
-
-        $listItem = "<li itemprop=\"itemListElement\" itemscope itemtype=\"https://schema.org/ListItem\" position=\"$position\">\n";
-        $listItem .= "<a itemscope itemtype=\"https://schema.org/WebPage\" itemprop=\"item\"";
-
-        if (!empty($item["href"])) {
-            $listItem .= " itemid=\"{$item["href"]}\" href=\"{$item["href"]}\"";
-        }
-
-        $listItem .= ">\n<span itemprop=\"name\">{$item["label"]}</span></a>\n";
-        $listItem .= "<meta itemprop=\"position\" content=\"$position\"/>\n";
-
-        if ($isLast) {
-            $listItem .= "</li>\n";
+    // Méthode pour récupérer une variable d'environnement
+    public function get($key) {
+        if (isset($this->envData[$key])) {
+            return $this->envData[$key];
         } else {
-            $listItem .= "</li>\n";
+            return null;
         }
-
-        return $listItem;
     }
 }
-
 class Debug
 {
 }

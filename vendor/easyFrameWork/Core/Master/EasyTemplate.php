@@ -49,6 +49,7 @@ class EasyTemplate
         $this->replaceImageURL();
         $this->replaceSessionVariables();
         $this->replaceGetVariable();
+        $this->replaceCondition();
         // Exécute les méthodes de substitution personnalisées
         // var_dump($customReplacements);
         foreach ($customReplacements as $customReplacement) {
@@ -124,8 +125,9 @@ class EasyTemplate
             if($arr=="string")
                 $this->content = str_replace("{var:$key}", htmlspecialchars($value), $this->content);
             else{
+                
                 foreach($value as $sKey=>$sValue){
-                    if(gettype($sValue)=="string")
+                    if(gettype($sValue)=="string" || gettype($sValue)=="integer")
                         $this->content = str_replace("{var:$key.$sKey}", htmlspecialchars($sValue), $this->content);
                 }
             }
@@ -136,7 +138,35 @@ class EasyTemplate
     {
         $this->content = str_replace("{:racine}", $this->config['racineProject'] . '/', $this->content);
     }
-
+    private function replaceCondition()
+    {
+        $pattern = "/\{\:IF (.*?)(=|!|>|<)(.*?)\}(.*?)(?:\{\:ELSE\:\}(.*?))?\{\:\/IF\}/s";
+        if (preg_match_all($pattern, $this->content, $matches)) {
+            // var_dump($matches);
+            for ($i = 0; $i < count($matches[0]); $i++) {
+                $replace = $matches[5][$i] ?? "";
+              //  echo $replace;
+                switch ($matches[2][$i]) {
+                    case "=":
+                        $replace = ($matches[1][$i] == $matches[3][$i]) ? $matches[4][$i] : $replace;
+                        break;
+                    case ">":
+                        $replace = ($matches[1][$i] > $matches[3][$i]) ? $matches[4][$i] : $replace;
+                        break;
+                    case "<":
+                        $replace = ($matches[1][$i] < $matches[3][$i]) ? $matches[4][$i] : $replace;
+                        break;
+                    case "!": {
+                       
+                            $replace = ($matches[1][$i] != $matches[3][$i]) ? $matches[4][$i] : $replace;
+                            echo $replace;
+                            break;
+                        }
+                }
+                $this->content = str_replace($matches[0][$i], $replace, $this->content);
+            }
+        }
+    }
     private function replaceImageURL()
     {
         $this->content = str_replace("{:image}", $this->config['imageDirectory'], $this->content);

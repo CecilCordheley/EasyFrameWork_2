@@ -1,10 +1,13 @@
 <?php
 namespace vendor\easyFrameWork\Core\Master;
+
 use vendor\easyFrameWork\Core\Master\EasyFrameWork;
 use PDO;
 use Exception;
+
 class SQLFactory
 {
+    private $query = "";
     private $PDO;
     private $tables;
     private $routine_fnc;
@@ -16,7 +19,8 @@ class SQLFactory
      */
     public function __construct($PDO = null, $configPath = "include/config.ini")
     {
-        $this->ini = parse_ini_file($configPath,true)["BDD"];
+        $this->query = "";
+        $this->ini = parse_ini_file($configPath, true)["BDD"];
         $this->PDO = $PDO ?? new PDO('mysql:host=' . $this->ini["host"] . ';dbname=' . $this->ini["bdd"], $this->ini["user"], $this->ini["mdp"]);
         $this->tables = [];
         $t = $this->getTableSchema();
@@ -29,8 +33,8 @@ class SQLFactory
         $r = $this->getStorageFnc();
         //   var_dump($r[0]);
         $this->routine_fnc = array_reduce($r, function ($carry, $item) {
-            $fncName = $item["ROUTINE_NAME"]??$item["routine_name"];
-            $carry[$fncName]["type"] = $item["DATA_TYPE"]??$item["data_type"];
+            $fncName = $item["ROUTINE_NAME"] ?? $item["routine_name"];
+            $carry[$fncName]["type"] = $item["DATA_TYPE"] ?? $item["data_type"];
 
             $carry[$fncName]["exec"] = function ($args) use ($fncName) {
                 $argsString = [];
@@ -42,6 +46,16 @@ class SQLFactory
             return $carry;
         }, []);
         //   var_dump($this->tables);
+    }
+    public function prepareQuery($query, $key, $value)
+    {
+        $this->query = $query;
+        $stmt = $this->PDO->prepare($query);
+        $stmt->bindParam(':val', $value, PDO::PARAM_STR);
+        $stmt->execute();
+        $return = $stmt->fetchAll();
+        $stmt->closeCursor();
+        return $return;
     }
     /**
      * Retourne l'identifiant de la table
@@ -65,6 +79,11 @@ class SQLFactory
     public function getColumns($table)
     {
         $i = 0;
+        $str = "SELECT COLUMN_NAME,EXTRA,COLUMN_KEY,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = '" . $this->ini["bdd"] . "'
+          AND TABLE_NAME = '$table'";
+        // EasyFrameWork::Debug($str);
         return array_reduce($this->execQuery("SELECT COLUMN_NAME,EXTRA,COLUMN_KEY,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = '" . $this->ini["bdd"] . "'
@@ -72,6 +91,11 @@ class SQLFactory
             $carry[$i]["NAME"] = $item["COLUMN_NAME"];
             $carry[$i]["PRIMARY"] = $item["COLUMN_KEY"];
             if ($item["COLUMN_KEY"] == "MUL") {
+                $str = "SELECT TABLE_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE COLUMN_NAME LIKE '%" . $carry[$i]["NAME"] . "%'
+                AND TABLE_NAME <>'$table';";
+                // EasyFrameWork::Debug($str);
                 $t = $this->execQuery("SELECT TABLE_NAME
                 FROM INFORMATION_SCHEMA.COLUMNS
                 WHERE COLUMN_NAME LIKE '%" . $carry[$i]["NAME"] . "%'
@@ -121,17 +145,15 @@ class SQLFactory
         }
         $query = str_replace("#K#", implode(",", $k), $query);
         $query = str_replace("#VALUES#", implode(",", $v), $query);
-    //    echo $query;
-      //  echo $this->PDO->lastInsertId();
+        //  echo $this->PDO->lastInsertId();
         return $this->execQuery($query);
-       
+
     }
-    public function lastInsertId($table){
-       // EasyFrameWork::Debug($this->getId($table));
-        $idField=$this->getId($table)[0];
-       $query="SELECT $idField FROM $table ORDER BY $idField DESC LIMIT 1";
-     //  echo $query;
-       return $this->execQuery($query)[0][$idField];
+    public function lastInsertId($table)
+    {
+        $idField = $this->getId($table)[0];
+        $query = "SELECT $idField FROM $table ORDER BY $idField DESC LIMIT 1";
+        return $this->execQuery($query)[0][$idField];
     }
     /**
      * supprimer l'occurence de la table
@@ -141,11 +163,8 @@ class SQLFactory
     public function deleteItem($id, $table)
     {
         $f = $this->tables[$table]["PRI"][0];
-        if (array_key_exists($table,$this->tables)) {
-            return $this->execQuery("DELETE FROM $table WHERE $f=$id");
-        } else {
-            throw new Exception("$table doesn't exist in the current schema");
-        }
+        return $this->execQuery("DELETE FROM $table WHERE $f=$id");
+
     }
     /**
      * Met à jour l'item de la table
@@ -170,7 +189,6 @@ class SQLFactory
      */
     public function execQuery($query)
     {
-       // echo $query;
         $sth = $this->PDO->query($query);
         $arr = $sth->fetchAll(PDO::FETCH_ASSOC);
         $sth->closeCursor();
