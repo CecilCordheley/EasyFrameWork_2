@@ -41,6 +41,7 @@ class EasyTemplate
     {
         $this->renderStylesheets();
         $this->renderScripts();
+        $this->renderMeta();
         foreach ($this->loops as $key => $loop) {
             $this->replaceLoop($key, $loop);
         }
@@ -64,6 +65,10 @@ class EasyTemplate
     }
     private function clear(){
         $this->content=preg_replace("/\{var:(.*?)\}/i","",$this->content);
+        $this->content=preg_replace("/\{\:GET name=(.*?)\}/i","",$this->content);
+    }
+    public function renderMeta(){
+        $this->resourceManager->renderMeta($this->content);
     }
     public function addScript($scriptPath)
     {
@@ -101,9 +106,10 @@ class EasyTemplate
                     if (gettype($value) != "array")
                         if ($UTF8Encode)
                             $html = str_replace("{#$key#}", mb_convert_encoding($value, "UTF-8"), $html);
-                        else
+                        else{
+                            $value="$value";
                             $html = str_replace("{#$key#}", $value, $html);
-                            
+                        }
                     
                 }
                 $index++;
@@ -159,7 +165,7 @@ class EasyTemplate
                     case "!": {
                        
                             $replace = ($matches[1][$i] != $matches[3][$i]) ? $matches[4][$i] : $replace;
-                            echo $replace;
+                //            echo $replace;
                             break;
                         }
                 }
@@ -171,15 +177,23 @@ class EasyTemplate
     {
         $this->content = str_replace("{:image}", $this->config['imageDirectory'], $this->content);
     }
-
+    public function _view($key, $sqlView, $p)
+    {
+        $pattern = "{view:$key}";
+        $replace = $sqlView->generate($p);
+        $this->content = str_replace($pattern, $replace, $this->content);
+        return $this;
+    }
     private function replaceSessionVariables()
     {
         if (isset($_SESSION)) {
             foreach ($_SESSION as $context => $values) {
                 foreach ($values as $name => $value) {
+                    if(gettype($value)=="string"){
                     $this->content = str_replace("{:SESSION context=\"$context\" name=\"$name\"}", htmlspecialchars($value), $this->content);
                     $this->content = str_replace("{:SESSION name=\"$name\" context=\"$context\"}", htmlspecialchars($value), $this->content);
                 }
+            }
             }
         }
     }

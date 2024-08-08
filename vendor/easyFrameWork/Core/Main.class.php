@@ -16,7 +16,7 @@ use vendor\easyFrameWork\Core\Master\SessionManager;
             $sessionManager = EasyGlobal::createSessionManager();
             $s = $sessionManager->get("streamer", SessionManager::PUBLIC_CONTEXT);
             $template->getRessourceManager()->addDirectJs("$(function(){
-                    _alert('$message',function(){
+                    _alert(\"$message\",function(){
                         window.location.href=\"BO-FAQ_$s\";
                     });
                 });");

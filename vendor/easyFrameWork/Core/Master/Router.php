@@ -28,6 +28,7 @@ class Router {
             $classe=get_declared_classes();
            // sort($classe);
          //  EasyFrameWork::Debug($controller);
+        // echo "$uri = $path";
             if ($uri === $path) {
                 
                 // Vérifier si le contrôleur existe

@@ -4,7 +4,7 @@ namespace vendor\easyFrameWork\Core\Master;
 use vendor\easyFrameWork\Core\Master\EasyFrameWork;
 use PDO;
 use Exception;
-
+use PDOException;
 class SQLFactory
 {
     private $query = "";
@@ -51,7 +51,19 @@ class SQLFactory
     {
         $this->query = $query;
         $stmt = $this->PDO->prepare($query);
-        $stmt->bindParam(':val', $value, PDO::PARAM_STR);
+     //   echo gettype($key);
+        if(gettype($key)=="array"){
+          
+            foreach($key as $k=>$v){
+                $stmt->bindParam(":$k", $v, PDO::PARAM_STR);
+                $this->query = str_replace($k, "'" . $v . "'", $this->query);
+            }
+            
+        }else{
+             $stmt->bindParam(':val', $value, PDO::PARAM_STR);
+        }
+      //  $stmt->debugDumpParams();
+        //echo $this->query;
         $stmt->execute();
         $return = $stmt->fetchAll();
         $stmt->closeCursor();
@@ -79,17 +91,18 @@ class SQLFactory
     public function getColumns($table)
     {
         $i = 0;
-        $str = "SELECT COLUMN_NAME,EXTRA,COLUMN_KEY,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH
+        $str = "SELECT COLUMN_NAME,EXTRA,COLUMN_KEY,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,IS_NULLABLE
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = '" . $this->ini["bdd"] . "'
           AND TABLE_NAME = '$table'";
         // EasyFrameWork::Debug($str);
-        return array_reduce($this->execQuery("SELECT COLUMN_NAME,EXTRA,COLUMN_KEY,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH
+        return array_reduce($this->execQuery("SELECT COLUMN_NAME,EXTRA,COLUMN_KEY,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,IS_NULLABLE
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = '" . $this->ini["bdd"] . "'
           AND TABLE_NAME = '$table'"), function ($carry, $item) use (&$i, $table) {
             $carry[$i]["NAME"] = $item["COLUMN_NAME"];
             $carry[$i]["PRIMARY"] = $item["COLUMN_KEY"];
+            $carry[$i]["NULLABLE"]=$item["IS_NULLABLE"];
             if ($item["COLUMN_KEY"] == "MUL") {
                 $str = "SELECT TABLE_NAME
                 FROM INFORMATION_SCHEMA.COLUMNS
@@ -135,6 +148,7 @@ class SQLFactory
     public function addItem($item, $table)
     {
 
+        try{
         $query = "INSERT INTO $table (#K#) VALUES (#VALUES#)";
         $k = [];
         $v = [];
@@ -147,6 +161,16 @@ class SQLFactory
         $query = str_replace("#VALUES#", implode(",", $v), $query);
         //  echo $this->PDO->lastInsertId();
         return $this->execQuery($query);
+    }catch(PDOException $e){
+        if ($e->getCode() == 23000) {
+            // Code d'erreur SQL pour une violation de contrainte d'intégrité
+            // ou de contrainte d'unicité
+            return "Error violation constrainte";
+        } else {
+            // Autres exceptions PDO
+            return "Erreur: " . $e->getMessage();
+        }
+    }
 
     }
     public function lastInsertId($table)
@@ -175,12 +199,23 @@ class SQLFactory
     {
         $u = [];
         $f = $this->tables[$table]["PRI"][0];
+        $fields=$this->getColumns($table);
         foreach ($item as $key => $value) {
-            if ($key != $f)
-                $u[] = "$key=\"$value\"";
+           $colInfo=array_filter($fields,function($e)use($key){
+                return $e["NAME"]==$key;
+            });
+            $null=array_shift($colInfo)["NULLABLE"];
+           
+            if ($key != $f){
+                if($null=="YES" && $value=="")
+                    $u[]="$key=NULL";
+                else
+                    $u[] = "$key=\"$value\"";
+            }
         }
 
         $id = $item[$f];
+     //   echo "UPDATE $table SET " . implode(",", $u) . " WHERE $f=$id";
         $this->execQuery("UPDATE $table SET " . implode(",", $u) . " WHERE $f=$id");
     }
     /**
