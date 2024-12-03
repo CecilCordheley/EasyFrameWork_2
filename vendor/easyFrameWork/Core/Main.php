@@ -80,6 +80,8 @@ use vendor\easyFrameWork\Core\Master\SessionManager;
          */
         public static function redirectWithAlert($template, $message,$url)
         {
+            $template->addStylesheet("_css/alert.css");
+            $template->addScript("_js/alert.js");
             $template->getRessourceManager()->addDirectJs("$(function(){
                     _alert('$message',function(){
                         window.location.href=\"$url\";

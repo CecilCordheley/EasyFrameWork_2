@@ -63,9 +63,14 @@ class EasyTemplate
         $this->clear();
         echo $this->content;
     }
+    public function clearView($viewName){
+        $this->content=str_replace("{view:$viewName}","",$this->content);
+        
+    }
     private function clear(){
         $this->content=preg_replace("/\{var:(.*?)\}/i","",$this->content);
         $this->content=preg_replace("/\{\:GET name=(.*?)\}/i","",$this->content);
+        $this->content=preg_replace("/\{view\:(.*?)\}/i","",$this->content);
     }
     public function renderMeta(){
         $this->resourceManager->renderMeta($this->content);
@@ -146,33 +151,62 @@ class EasyTemplate
     }
     private function replaceCondition()
     {
-        $pattern = "/\{\:IF (.*?)(=|!|>|<)(.*?)\}(.*?)(?:\{\:ELSE\:\}(.*?))?\{\:\/IF\}/s";
-        if (preg_match_all($pattern, $this->content, $matches)) {
-            // var_dump($matches);
-            for ($i = 0; $i < count($matches[0]); $i++) {
-                $replace = $matches[5][$i] ?? "";
-              //  echo $replace;
-                switch ($matches[2][$i]) {
-                    case "=":
-                        $replace = ($matches[1][$i] == $matches[3][$i]) ? $matches[4][$i] : $replace;
-                        break;
-                    case ">":
-                        $replace = ($matches[1][$i] > $matches[3][$i]) ? $matches[4][$i] : $replace;
-                        break;
-                    case "<":
-                        $replace = ($matches[1][$i] < $matches[3][$i]) ? $matches[4][$i] : $replace;
-                        break;
-                    case "!": {
-                       
-                            $replace = ($matches[1][$i] != $matches[3][$i]) ? $matches[4][$i] : $replace;
-                //            echo $replace;
-                            break;
-                        }
-                }
-                $this->content = str_replace($matches[0][$i], $replace, $this->content);
+        $this->content = $this->processConditions($this->content);
+    }
+    
+    private function processConditions($content)
+    {
+        $pattern = "/\{\:IF (.*?)\s*(=|!|>|<)\s*(.*?)\}(.*?)(\{\:ELSE\:\}(.*?))?\{\:\/IF\}/s";
+    
+        while (preg_match($pattern, $content, $matches)) {
+            $condition = false;
+            $var1 = $this->evaluateVariable(trim($matches[1]));
+            $var2 = $this->evaluateVariable(trim($matches[3]));
+    
+            switch ($matches[2]) {
+                case "=":
+                    $condition = ($var1 == $var2);
+                    break;
+                case ">":
+                    $condition = ($var1 > $var2);
+                    break;
+                case "<":
+                    $condition = ($var1 < $var2);
+                    break;
+                case "!":
+                    $condition = ($var1 != $var2);
+                    break;
+            }
+    
+            $ifContent = $matches[4];
+            $elseContent = $matches[6] ?? '';
+    
+            // Appel récursif pour traiter les conditions imbriquées
+            $ifContent = $this->processConditions($ifContent);
+            $elseContent = $this->processConditions($elseContent);
+    
+            // Remplace le bloc entier par le contenu approprié
+            $replace = $condition ? $ifContent : $elseContent;
+            $content = str_replace($matches[0], $replace, $content);
+        }
+    
+        return $content;
+    }
+    
+    private function evaluateVariable($var)
+    {
+        // Vérifie si le format de la variable est {var:...}
+        if (preg_match('/\{var:(.*?)\}/', $var, $varMatch)) {
+            $varName = $varMatch[1];
+            // Recherche dans les variables définies
+            if (isset($this->variables[$varName])) {
+                return $this->variables[$varName];
             }
         }
+        return $var;
     }
+    
+    
     private function replaceImageURL()
     {
         $this->content = str_replace("{:image}", $this->config['imageDirectory'], $this->content);

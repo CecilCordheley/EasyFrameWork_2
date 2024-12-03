@@ -36,6 +36,7 @@ class SQLtoView extends SqlToElement{
                 $carry["str"].=$this->view;
             }
             foreach($item as $key=>$value){
+                if(gettype($value)=="string")
                 $carry["str"]=str_replace("#$key#",$value,$carry["str"]);
             }
             $carry["previous"]=$item;

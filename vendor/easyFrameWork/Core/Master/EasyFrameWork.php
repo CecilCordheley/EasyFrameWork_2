@@ -20,11 +20,67 @@ abstract class EasyFrameWork
         self::$Racines = json_decode(file_get_contents("vendor/easyFrameWork/Core/config/config.json"), true)["racine"];
         //   EasyFrameWork::Debug(self::$Racines);
     }
-    public static function Debug(mixed $var)
-    {
-        var_dump($var);
+    /*
+    public static function Debug(mixed $var, bool $exit = true, bool $showTrace = false, string $logFile = null)
+{
+    if ($showTrace) {
+        echo '<pre>';
+        debug_print_backtrace();
+        echo '</pre>';
+    }
+
+    if (php_sapi_name() === 'cli') {
+        print_r($var);
+    } else {
+        echo '<pre>';
+        print_r($var);
+        echo '</pre>';
+    }
+
+    if ($logFile) {
+        file_put_contents($logFile, print_r($var, true), FILE_APPEND);
+    }
+
+    if ($exit) {
         exit;
     }
+}
+*/
+public static function Debug(mixed $var, bool $exit = true,$logFile=false)
+{
+    // Convertir la variable en chaîne de caractères
+    ob_start();
+    print_r($var);
+    $output = ob_get_clean();
+
+    // Échapper les caractères spéciaux
+    $output = htmlspecialchars($output);
+
+    // Ajouter un formatage HTML pour les champs (exemple pour tableau ou objet)
+    $formattedOutput = preg_replace(
+        [
+            '/\[([^\]]+)\]/',             // Capturer les clés (entre crochets)
+            '/\(([^()]+)\)/'              // Optionnel : capturer les parenthèses (si besoin)
+        ],
+        [
+            '<span style="color: blue; font-weight: bold;">[$1]</span>', // Ajouter une couleur aux clés
+            '(<span style="color: green;">$1</span>)'                  // Ajouter une couleur pour les contenus parenthésés
+        ],
+        $output
+    );
+
+    // Encapsuler dans un bloc stylisé
+    echo '<div style="background: #f9f9f9; border: 1px solid #ccc; padding: 10px; margin: 10px; font-family: monospace;">';
+    echo '<pre>' . $formattedOutput . '</pre>';
+    echo '</div>';
+    if ($logFile) {
+        file_put_contents($logFile, print_r($var, true), FILE_APPEND);
+    }
+    if ($exit) {
+        exit;
+    }
+}
+
     public static function toCamelCase(string $input): string
     {
         return preg_replace_callback('/(?:^|_)([a-z])/', function ($matches) {
