@@ -3,6 +3,7 @@ namespace vendor\easyFrameWork\Core;
 use vendor\easyFrameWork\Core\Master\EasyGlobal;
 use vendor\easyFrameWork\Core\Master\EasyTemplate;
 use vendor\easyFrameWork\Core\Master\SessionManager;
+use DateTime;
     abstract class Main{
         public static function FormatDate($strDate){
             $str="";
@@ -57,6 +58,17 @@ use vendor\easyFrameWork\Core\Master\SessionManager;
             //  EasyFrameWork::Debug($_SERVER["SCRIPT_NAME"]);
             $url = explode("/", $_SERVER["REQUEST_URI"]);
             return $protocol . $_SERVER['HTTP_HOST'] . str_replace("/" . end($url), "", $_SERVER["REQUEST_URI"]);
+        }
+        /**
+         * Compare deux date (retourne 1 si d1>d2 sinon 0)
+         * @param string $d1
+         * @param string $d2
+         * @return int
+         */
+        public static function DateCompare($d1,$d2){
+            $date1 = new DateTime($d1);
+            $date2 = new DateTime($d2); // Can use date/string just like strtotime.
+            return $date1 > $date2?1:0;
         }
         /**
          * Permet de générer un mot de passe de la longeur indiquée

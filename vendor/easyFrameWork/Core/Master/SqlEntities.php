@@ -2,6 +2,8 @@
 namespace vendor\easyFrameWork\Core\Master;
 use vendor\easyFrameWork\Core\Master\EasyFrameWork;
 use vendor\easyFrameWork\Core\Master\SQLFactory;
+use RuntimeException;
+use InvalidArgumentException;
 abstract class SqlEntities
 {
     public static $DIRECTORY = "./SQLEntities";
@@ -74,6 +76,48 @@ abstract class SqlEntities
             echo ">Class $table [$className] - genérée";
         }
     }
+    public static function TblClassToEntity(SQLFactory $sqlF, string $className): void
+    {
+        // Vérifier que la classe existe
+     /*   if (!class_exists($className)) {
+            throw new InvalidArgumentException("Class $className does not exist.");
+        }
+    
+        // Obtenir le nom de la table à partir de la classe
+        if (!is_subclass_of($className, SqlEntities::class)) {
+            throw new InvalidArgumentException("$className must extend SQLEntity.");
+        }*/
+    
+       /* $table = $className::getTableName();
+    
+        // Générer la classe de base
+        self::generateEntity($sqlF, $table);*/
+    
+        // Nom de la classe générée et de la classe personnalisée
+        $baseClass = str_replace("Tbl","",EasyFrameWork::toCamelCase($className)); // Nom de la classe générée
+
+        $customClass = "{$baseClass}Entity"; // Nom de la classe personnalisée
+        $filePath = self::$DIRECTORY . "/$customClass.php";
+    
+        // Vérifier si la classe personnalisée existe déjà
+        if (file_exists($filePath)) {
+            echo "> Custom class $customClass already exists. Skipping generation.\n";
+            return;
+        }
+    
+        // Contenu de la classe personnalisée
+        $content = file_get_contents("SQLEntities/SQLEntityModel");
+        $content=str_replace("[%customClass%]",$customClass,$content);
+        $content=str_replace("[%baseClass%]",$className,$content);
+        $content=str_replace("[%className%]",$baseClass,$content);
+        // Sauvegarder la classe personnalisée
+        if (file_put_contents($filePath, $content)) {
+            echo "> Custom class $customClass for table [$className] created successfully.\n";
+        } else {
+            throw new RuntimeException("Failed to generate custom class $customClass.");
+        }
+    }
+    
     /**
      * Charge la classe SQLEntitie de la table passée en paramètre
      * @param string $table

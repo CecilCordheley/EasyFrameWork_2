@@ -10,42 +10,18 @@ use Exception;
 abstract class EasyFrameWork
 {
     public static $Racines = [];
-    public static function INIT()
+    public static function INIT($configAccess="vendor/easyFrameWork/Core/config/config.json")
     {
-        session_start();
+        if(session_id()==null)
+            session_start();
      //    echo "<!--INIT EasyFrameWork-->";
         require_once("Autoloader.php");
         Autoloader::register();
+       // echo $configAccess;
       //  EasyFrameWork::Debug($_SERVER);
-        self::$Racines = json_decode(file_get_contents("vendor/easyFrameWork/Core/config/config.json"), true)["racine"];
+        self::$Racines = json_decode(file_get_contents($configAccess), true)["racine"];
         //   EasyFrameWork::Debug(self::$Racines);
     }
-    /*
-    public static function Debug(mixed $var, bool $exit = true, bool $showTrace = false, string $logFile = null)
-{
-    if ($showTrace) {
-        echo '<pre>';
-        debug_print_backtrace();
-        echo '</pre>';
-    }
-
-    if (php_sapi_name() === 'cli') {
-        print_r($var);
-    } else {
-        echo '<pre>';
-        print_r($var);
-        echo '</pre>';
-    }
-
-    if ($logFile) {
-        file_put_contents($logFile, print_r($var, true), FILE_APPEND);
-    }
-
-    if ($exit) {
-        exit;
-    }
-}
-*/
 public static function Debug(mixed $var, bool $exit = true,$logFile=false)
 {
     // Convertir la variable en chaîne de caractères

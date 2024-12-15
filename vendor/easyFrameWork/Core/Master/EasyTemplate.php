@@ -2,6 +2,7 @@
 
 namespace vendor\easyFrameWork\Core\Master;
 
+use RuntimeException;
 use vendor\easyFrameWork\Core\Master\ResourceManager;
 
 class EasyTemplate
@@ -94,6 +95,12 @@ class EasyTemplate
     {
         $this->resourceManager->renderStylesheets($this->content);
     }
+    public function cancelLoop(string $key,$alt=""){
+        $pattern = "\\{LOOP:$key\\}(.*?)\\{\\/LOOP\\}";
+        if (preg_match_all("/$pattern/is", $this->content, $matches)) {
+            $this->content = str_replace($matches[0][0], $alt, $this->content);
+        }
+    }
     public function setLoop(string $key, array $a)
     {
         $this->loops[$key] = $a;
@@ -102,28 +109,46 @@ class EasyTemplate
     {
         $pattern = "\\{LOOP:$key\\}(.*?)\\{\\/LOOP\\}";
         if (preg_match_all("/$pattern/is", $this->content, $matches)) {
-            $index=0;
-            $content = array_reduce($array, function ($html, $lines) use ($matches, $UTF8Encode,&$index) {
-                $html .= $matches[1][0];
-                $html = str_replace("{#index#}", $index, $html); 
+            $loopTemplate = $matches[1][0];
+            $content = array_reduce($array, function ($html, $lines) use ($loopTemplate, $UTF8Encode) {
+                $loopContent = $loopTemplate;
+    
                 foreach ($lines as $key => $value) {
-                    
-                    if (gettype($value) != "array")
-                        if ($UTF8Encode)
-                            $html = str_replace("{#$key#}", mb_convert_encoding($value, "UTF-8"), $html);
-                        else{
-                            $value="$value";
-                            $html = str_replace("{#$key#}", $value, $html);
+                    if (is_array($value)) {
+                        // Gestion des sous-boucles
+                        $subPattern = "\\{LOOP:$key\\}(.*?)\\{\\/LOOP\\}";
+                        if (preg_match_all("/$subPattern/is", $loopContent, $subMatches)) {
+                            $subTemplate = $subMatches[1][0];
+                            $subContent = array_reduce($value, function ($subHtml, $subLines) use ($subTemplate, $UTF8Encode) {
+                                $subLoopContent = $subTemplate;
+                                foreach ($subLines as $subKey => $subValue) {
+                                    if ($UTF8Encode) {
+                                        $subLoopContent = str_replace("{#$subKey#}", mb_convert_encoding($subValue, "UTF-8"), $subLoopContent);
+                                    } else {
+                                        $subLoopContent = str_replace("{#$subKey#}", $subValue, $subLoopContent);
+                                    }
+                                }
+                                return $subHtml . $subLoopContent;
+                            }, "");
+                            $loopContent = str_replace($subMatches[0][0], $subContent, $loopContent);
                         }
-                    
+                    } else {
+                        // Remplacement simple des variables
+                        if ($UTF8Encode) {
+                            $loopContent = str_replace("{#$key#}", mb_convert_encoding($value, "UTF-8"), $loopContent);
+                        } else {
+                            if(gettype($value)=="string")
+                                $loopContent = str_replace("{#$key#}", $value, $loopContent);
+                        
+                        }
+                    }
                 }
-                $index++;
-                return $html;
-                
+                return $html . $loopContent;
             }, "");
             $this->content = str_replace($matches[0][0], $content, $this->content);
         }
     }
+    
     private function replaceGetVariable(){
         foreach($_GET as $key=>$value){
             $this->content = str_replace("{:GET name=$key}", htmlspecialchars($value), $this->content);
@@ -155,47 +180,81 @@ class EasyTemplate
     }
     
     private function processConditions($content)
-    {
-        $pattern = "/\{\:IF (.*?)\s*(=|!|>|<)\s*(.*?)\}(.*?)(\{\:ELSE\:\}(.*?))?\{\:\/IF\}/s";
-    
-        while (preg_match($pattern, $content, $matches)) {
-            $condition = false;
-            $var1 = $this->evaluateVariable(trim($matches[1]));
-            $var2 = $this->evaluateVariable(trim($matches[3]));
-    
-            switch ($matches[2]) {
-                case "=":
-                    $condition = ($var1 == $var2);
-                    break;
-                case ">":
-                    $condition = ($var1 > $var2);
-                    break;
-                case "<":
-                    $condition = ($var1 < $var2);
-                    break;
-                case "!":
-                    $condition = ($var1 != $var2);
-                    break;
-            }
-    
-            $ifContent = $matches[4];
-            $elseContent = $matches[6] ?? '';
-    
-            // Appel récursif pour traiter les conditions imbriquées
-            $ifContent = $this->processConditions($ifContent);
-            $elseContent = $this->processConditions($elseContent);
-    
-            // Remplace le bloc entier par le contenu approprié
-            $replace = $condition ? $ifContent : $elseContent;
-            $content = str_replace($matches[0], $replace, $content);
+{
+    $pattern = "/\{\:IF\s+(.*?)\s*(=|!|>|<|>=|<=)\s*(.*?)\}(.*?)(\{\:ELSE\:\}(.*?))?\{\:\/IF\}/s";
+
+    while (preg_match($pattern, $content, $matches)) {
+        $condition = false;
+
+        // Résoudre les variables dynamiques
+        $var1 = $this->evaluateVariable($this->resolveDynamicVariable(trim($matches[1])));
+        $var2 = $this->evaluateVariable($this->resolveDynamicVariable(trim($matches[3])));
+
+        // Évaluer la condition
+        switch ($matches[2]) {
+            case "=":
+                $condition = ($var1 == $var2);
+                break;
+            case "!":
+                $condition = ($var1 != $var2);
+                break;
+            case ">":
+                $condition = ($var1 > $var2);
+                break;
+            case "<":
+                $condition = ($var1 < $var2);
+                break;
+            case ">=":
+                $condition = ($var1 >= $var2);
+                break;
+            case "<=":
+                $condition = ($var1 <= $var2);
+                break;
         }
-    
-        return $content;
+
+        // Contenu à évaluer pour chaque branche
+        $ifContent = $matches[4];
+        $elseContent = $matches[6] ?? '';
+
+        // Appel récursif pour traiter les blocs imbriqués
+        $ifContent = $this->processConditions($ifContent);
+        $elseContent = $this->processConditions($elseContent);
+
+        // Remplacement du contenu basé sur la condition
+        $replace = $condition ? $ifContent : $elseContent;
+        $content = str_replace($matches[0], $replace, $content);
     }
+
+    return $content;
+}
+
+private function resolveDynamicVariable($var)
+{
+    // Vérifie et résout les variables de type {var:...}
+    if (preg_match("/\{var:(.*?)\}/", $var, $match)) {
+        $variableName = $match[1];
+        // Retourne la valeur de la variable (remplacez ceci par votre logique)
+        return $this->getVariableValue($variableName);
+    }
+    return $var; // Retourne la valeur brute si ce n'est pas une variable dynamique
+}
+
+private function getVariableValue($key)
+{
+    // Exemple de logique pour obtenir une valeur dynamique (à adapter à votre contexte)
+    $variables = [
+        'user.TYPE_UTILISATEUR' => 4,
+        'activUser' => 1,
+        'activSujet' => 0,
+    ];
+    return $variables[$key] ?? null;
+}
+
     
     private function evaluateVariable($var)
     {
         // Vérifie si le format de la variable est {var:...}
+        if(isset($var)){
         if (preg_match('/\{var:(.*?)\}/', $var, $varMatch)) {
             $varName = $varMatch[1];
             // Recherche dans les variables définies
@@ -204,6 +263,7 @@ class EasyTemplate
             }
         }
         return $var;
+    }
     }
     
     

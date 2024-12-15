@@ -186,7 +186,18 @@ class SQLFactory
      */
     public function deleteItem($id, $table)
     {
+       // EasyFrameWork::Debug($this->tables);
+       if(isset($this->tables[$table])){
         $f = $this->tables[$table]["PRI"][0];
+       }elseif(isset($this->tables[strtolower($table)])){
+        $f = $this->tables[strtolower($table)]["PRI"][0];
+       }elseif(isset($this->tables[strtoupper($table)])){
+        $f = $this->tables[strtoupper($table)]["PRI"][0];
+       }else{
+        throw new Exception("no $table find in current schema");
+       }
+        
+   //     echo "<pre>DELETE FROM $table WHERE $f=$id</pre>";
         return $this->execQuery("DELETE FROM $table WHERE $f=$id");
 
     }
@@ -216,7 +227,8 @@ class SQLFactory
 
         $id = $item[$f];
      //   echo "UPDATE $table SET " . implode(",", $u) . " WHERE $f=$id";
-        $this->execQuery("UPDATE $table SET " . implode(",", $u) . " WHERE $f=$id");
+        return $this->execQuery("UPDATE $table SET " . implode(",", $u) . " WHERE $f=$id");
+        
     }
     /**
      * Exécute une requête
